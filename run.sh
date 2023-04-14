@@ -4,6 +4,7 @@
 files=(
   "../chromium-speech2text/background.js"
   "../chromium-speech2text/content.js"
+  "../chromium-speech2text/manifest.json"
 )
 
 # The aggregate file
@@ -21,7 +22,7 @@ for file in "${files[@]}"; do
     # Append the file contents to the aggregate file
     cat "$file" >> "$aggregate"
     # Add 3 new lines between each file's content
-    echo -e "\n\n\n" >> "$aggregate"
+    echo "\n\n\n" >> "$aggregate"
   else
     echo "Error: $file not found."
   fi
