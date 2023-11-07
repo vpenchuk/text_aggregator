@@ -1,5 +1,13 @@
 #!/bin/bash
 
+# Load .env file
+if [ -f .env ]; then
+    export $(cat .env | xargs)
+else
+    echo ".env file not found"
+    exit 1
+fi
+
 # Configuration directory
 config_dir="./configs"
 
@@ -37,6 +45,47 @@ mkdir -p "$custom_dir"
 
 # Empty the aggregate file if it exists or create a new one
 > "$aggregate"
+
+# function to document / summarize the aggregated file
+summarize_with_openai() {
+    local file_content=$1
+    local prompt_text="You are a helpful assistant. Summarize the following shell scripts and describe the purpose and function of files, functions, and variables:"
+
+    # Your OpenAI API key should be read from an environment variable
+    local openai_api_key=$OPENAI_API_KEY
+
+    # API endpoint for OpenAI Chat
+    local openai_endpoint="https://api.openai.com/v1/chat/completions"
+
+    # Prepare the data for the API call
+    local data=$(jq -n \
+        --arg prompt "$prompt_text" \
+        --arg content "$file_content" \
+        '{model: "gpt-4-1106-preview", messages: [{"role": "system", "content": $prompt}, {"role": "user", "content": $content}]}')
+
+    # Make the API call and store the response
+    local summary_response=$(curl -s -X POST $openai_endpoint \
+        -H "Content-Type: application/json" \
+        -H "Authorization: Bearer $openai_api_key" \
+        -d "$data")
+
+    # Extract the text from the response
+    local summary=$(echo "$summary_response" | jq -r '.choices[0].message.content')
+
+    # Check for errors in the response
+    if [[ "$summary" == "" || "$summary" == "null" ]]; then
+        local error_message=$(echo "$summary_response" | jq -r '.error.message')
+        if [[ "$error_message" != "null" ]]; then
+            echo "Error from OpenAI: $error_message"
+            return 1
+        else
+            echo "No summary was provided or an unknown error occurred."
+            return 1
+        fi
+    fi
+
+    echo "$summary"
+}
 
 # Construct the find command
 find_command="find \"$root_dir\" -type f"
@@ -85,5 +134,15 @@ eval $find_command | while IFS= read -r file; do
         echo "Error: $file not found."
     fi
 done
+
+# Call the summarize function with its contents
+if [ -s "$aggregate" ]; then
+    aggregate_content=$(<"$aggregate")
+    summary=$(summarize_with_openai "$aggregate_content")
+    echo "Summary:"
+    echo "$summary"
+else
+    echo "Aggregate file is empty or does not exist."
+fi
 
 echo "Aggregation complete. Check $aggregate for the combined contents."
