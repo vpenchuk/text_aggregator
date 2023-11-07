@@ -49,7 +49,8 @@ mkdir -p "$custom_dir"
 # function to document / summarize the aggregated file
 summarize_with_openai() {
     local file_content=$1
-    local prompt_text="You are a helpful assistant. Summarize the following shell scripts and describe the purpose and function of files, functions, and variables:"
+    # local prompt_text="You are a helpful assistant. Summarize the following shell scripts and describe the purpose and function of files, functions, and variables:"
+    local prompt_text="Please give high level summary of the following code, just casually explain what it does"
 
     # Your OpenAI API key should be read from an environment variable
     local openai_api_key=$OPENAI_API_KEY
@@ -85,6 +86,16 @@ summarize_with_openai() {
     fi
 
     echo "$summary"
+
+    # Save summary to a file
+    if [ "$include_timestamp" = true ]; then
+        echo "$summary" > "$custom_dir/$summ_file_name.txt_${timestamp}.txt"
+    else
+        echo "$summary" > "$custom_dir/$summ_file_name.txt"
+    fi
+    # echo "$summary" > "$custom_dir/$summ_file_name.txt"
+
+    echo "Summary saved to $custom_dir/$summ_file_name.txt"
 }
 
 # Construct the find command
