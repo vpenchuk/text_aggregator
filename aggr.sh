@@ -25,8 +25,12 @@ custom_dir="${saves_dir}/${custom_subfolder}"
 # Current timestamp for the saved file name
 timestamp=$(date +"%Y%m%d%H%M%S")
 
-# New summary file name from configuration, with timestamp and extension
-aggregate="${custom_dir}/${output_file_base_name}_${timestamp}.txt"
+# Decide whether to add timestamp based on the configuration
+if [ "$include_timestamp" = true ]; then
+    aggregate="${custom_dir}/${output_file_base_name}_${timestamp}.txt"
+else
+    aggregate="${custom_dir}/${output_file_base_name}.txt"
+fi
 
 # Check and create custom subdirectory within saves if not exists
 mkdir -p "$custom_dir"
