@@ -1,18 +1,20 @@
 #!/bin/bash
 
-OS=$(<.host)
-aggregate="summary.txt"
+# Load the configuration
+source config.sh
 
-# Root directory to start searching from (change to your specific root)
-root_dir="D:/Development/TheResearchCorp/MyStats.tv/v3/stream-tracker/server"
+# Saves directory and custom subfolder path
+saves_dir="./saves"
+custom_dir="${saves_dir}/${custom_subfolder}"
 
-# Specify file extensions
-extensions=("js")
+# Current timestamp for the saved file name
+timestamp=$(date +"%Y%m%d%H%M%S")
 
-# Directories to exclude from the search
-exclusions=(
-    "*node_modules*"
-)
+# New summary file name from configuration, with timestamp and extension
+aggregate="${custom_dir}/${output_file_base_name}_${timestamp}.txt"
+
+# Check and create custom subdirectory within saves if not exists
+mkdir -p "$custom_dir"
 
 # Empty the aggregate file if it exists or create a new one
 > "$aggregate"
@@ -36,8 +38,11 @@ eval $find_command | while IFS= read -r file; do
     if [ -f "$file" ]; then
         # Convert POSIX path back to Windows path for output
         win_path=$(echo $file | sed 's/\//\\/g' | sed 's/^./\0:/')
+        # Write the file path/name to the aggregate file
         echo "//$win_path" >> "$aggregate"
+        # Append the file contents to the aggregate file
         cat "$file" >> "$aggregate"
+        # Add separator lines between each file's content
         echo -e "\n\n\n" >> "$aggregate"
     else
         echo "Error: $file not found."
