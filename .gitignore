@@ -1,1 +1,9 @@
+.host
+
+saves/*
+configs/*
+
 aggregate.txt
+
+summary_prompt.txt
+summary.txt
