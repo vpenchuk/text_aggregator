@@ -1,6 +1,7 @@
 .host
 
 saves/*
+configs/*
 
 aggregate.txt
 

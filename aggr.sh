@@ -1,7 +1,22 @@
 #!/bin/bash
 
+# Configuration directory
+config_dir="./configs"
+
+# Default configuration file name
+default_config="default"
+
+# Use the first script argument as the config file name, or default if none is provided
+config_file="${1:-$default_config}.sh"
+
+# Check if the configuration file exists, otherwise exit with error
+if [ ! -f "$config_dir/$config_file" ]; then
+    echo "Configuration file not found: $config_dir/$config_file"
+    exit 1
+fi
+
 # Load the configuration
-source config.sh
+source "$config_dir/$config_file"
 
 # Saves directory and custom subfolder path
 saves_dir="./saves"
@@ -24,13 +39,17 @@ find_command="find \"$root_dir\" -type f"
 
 # Add inclusion patterns for file extensions
 for ext in "${extensions[@]}"; do
-    find_command+=" \( -iname \"*.$ext\" \)"
+    find_command+=" -iname \"*.$ext\""
 done
 
 # Add exclusion patterns for directories
+find_command+=" ! \("
 for exclusion in "${exclusions[@]}"; do
-    find_command+=" ! -path \"$exclusion\""
+    find_command+=" -path \"$exclusion\" -o"
 done
+# Remove the trailing -o (OR) from the command
+find_command=${find_command::-2}
+find_command+=" \)"
 
 # Execute the find command and process files
 eval $find_command | while IFS= read -r file; do
