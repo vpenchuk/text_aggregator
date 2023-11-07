@@ -27,9 +27,9 @@ timestamp=$(date +"%Y%m%d%H%M%S")
 
 # Decide whether to add timestamp based on the configuration
 if [ "$include_timestamp" = true ]; then
-    aggregate="${custom_dir}/${output_file_base_name}_${timestamp}.txt"
+    aggregate="${custom_dir}/${aggr_file_name}_${timestamp}.txt"
 else
-    aggregate="${custom_dir}/${output_file_base_name}.txt"
+    aggregate="${custom_dir}/${aggr_file_name}.txt"
 fi
 
 # Check and create custom subdirectory within saves if not exists
