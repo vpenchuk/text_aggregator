@@ -42,14 +42,28 @@ for ext in "${extensions[@]}"; do
     find_command+=" -iname \"*.$ext\""
 done
 
-# Add exclusion patterns for directories
-find_command+=" ! \("
+# Add exclusion patterns for directories and files
+exclusion_conditions=()
 for exclusion in "${exclusions[@]}"; do
-    find_command+=" -path \"$exclusion\" -o"
+    # Check if exclusion is a directory or a file
+    if [[ -d "$root_dir/$exclusion" ]]; then
+        # It's a directory, exclude directory matches
+        exclusion_conditions+=("-path \"$root_dir/$exclusion/*\"")
+    elif [[ -f "$root_dir/$exclusion" ]]; then
+        # It's a file, exclude file matches
+        exclusion_conditions+=("-name \"$exclusion\"")
+    else
+        # Assume any other pattern is a glob and handle it accordingly
+        exclusion_conditions+=("-name \"$exclusion\"")
+    fi
 done
-# Remove the trailing -o (OR) from the command
-find_command=${find_command::-2}
-find_command+=" \)"
+
+# Join all exclusion conditions
+if [ ${#exclusion_conditions[@]} -ne 0 ]; then
+    for condition in "${exclusion_conditions[@]}"; do
+        find_command+=" ! \( $condition \)"
+    done
+fi
 
 # Execute the find command and process files
 eval $find_command | while IFS= read -r file; do
