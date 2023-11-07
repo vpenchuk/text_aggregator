@@ -8,23 +8,37 @@ else
     exit 1
 fi
 
-# Configuration directory
-config_dir="./configs"
+# New configuration directories under the 'configs' directory
+profile_config_dir="./configs/profiles"
+prompt_config_dir="./configs/prompts"
 
-# Default configuration file name
-default_config="default"
+# Default configuration file names
+default_profile_config="default-profile"
+default_prompt_config="default-prompt"
 
-# Use the first script argument as the config file name, or default if none is provided
-config_file="${1:-$default_config}.sh"
+# Use the first script argument as the profile config file name, or default if none is provided
+profile_config_file="${1:-$default_profile_config}.sh"
 
-# Check if the configuration file exists, otherwise exit with error
-if [ ! -f "$config_dir/$config_file" ]; then
-    echo "Configuration file not found: $config_dir/$config_file"
+# Use the second script argument as the prompt config file name, or default if none is provided
+prompt_config_file="${2:-$default_prompt_config}.txt"
+
+# Check if the profile configuration file exists, otherwise exit with error
+if [ ! -f "$profile_config_dir/$profile_config_file" ]; then
+    echo "Profile configuration file not found: $profile_config_dir/$profile_config_file"
     exit 1
 fi
 
-# Load the configuration
-source "$config_dir/$config_file"
+# Check if the prompt configuration file exists, otherwise exit with error
+if [ ! -f "$prompt_config_dir/$prompt_config_file" ]; then
+    echo "Prompt configuration file not found: $prompt_config_dir/$prompt_config_file"
+    exit 1
+fi
+
+# Load the profile configuration
+source "$profile_config_dir/$profile_config_file"
+
+# Load the prompt configuration
+prompt_text=$(cat "$prompt_config_dir/$prompt_config_file")
 
 # Saves directory and custom subfolder path
 saves_dir="./saves"
@@ -46,11 +60,9 @@ mkdir -p "$custom_dir"
 # Empty the aggregate file if it exists or create a new one
 > "$aggregate"
 
-# function to document / summarize the aggregated file
 summarize_with_openai() {
     local file_content=$1
-    # local prompt_text="You are a helpful assistant. Summarize the following shell scripts and describe the purpose and function of files, functions, and variables:"
-    local prompt_text="Please give high level summary of the following code, just casually explain what it does"
+    local prompt_text=$2
 
     # Your OpenAI API key should be read from an environment variable
     local openai_api_key=$OPENAI_API_KEY
@@ -95,42 +107,24 @@ summarize_with_openai() {
     fi
     # echo "$summary" > "$custom_dir/$summ_file_name.txt"
 
-    echo "Summary saved to $custom_dir/$summ_file_name.txt"
+    echo "\n\nSummary saved to $custom_dir/$summ_file_name.txt"
 }
 
-# Construct the find command
-find_command="find \"$root_dir\" -type f"
+# Construct the find command as an array
+find_command=( find "$root_dir" -type f )
 
 # Add inclusion patterns for file extensions
 for ext in "${extensions[@]}"; do
-    find_command+=" -iname \"*.$ext\""
+    find_command+=( -iname "*.$ext" )
 done
 
 # Add exclusion patterns for directories and files
-exclusion_conditions=()
 for exclusion in "${exclusions[@]}"; do
-    # Check if exclusion is a directory or a file
-    if [[ -d "$root_dir/$exclusion" ]]; then
-        # It's a directory, exclude directory matches
-        exclusion_conditions+=("-path \"$root_dir/$exclusion/*\"")
-    elif [[ -f "$root_dir/$exclusion" ]]; then
-        # It's a file, exclude file matches
-        exclusion_conditions+=("-name \"$exclusion\"")
-    else
-        # Assume any other pattern is a glob and handle it accordingly
-        exclusion_conditions+=("-name \"$exclusion\"")
-    fi
+    find_command+=( ! -path "$exclusion" -prune )
 done
 
-# Join all exclusion conditions
-if [ ${#exclusion_conditions[@]} -ne 0 ]; then
-    for condition in "${exclusion_conditions[@]}"; do
-        find_command+=" ! \( $condition \)"
-    done
-fi
-
-# Execute the find command and process files
-eval $find_command | while IFS= read -r file; do
+# Execute the find command using array expansion to preserve arguments
+while IFS= read -r file; do
     # Check if the file exists
     if [ -f "$file" ]; then
         # Convert POSIX path back to Windows path for output
@@ -144,16 +138,17 @@ eval $find_command | while IFS= read -r file; do
     else
         echo "Error: $file not found."
     fi
-done
+done < <( "${find_command[@]}" )
+
+echo "Aggregation complete. Check $aggregate for the combined contents."
 
 # Call the summarize function with its contents
 if [ -s "$aggregate" ]; then
     aggregate_content=$(<"$aggregate")
-    summary=$(summarize_with_openai "$aggregate_content")
+    echo "Calling OpenAI API for Summarization...Please wait..."
+    summary=$(summarize_with_openai "$aggregate_content" "$prompt_text")  # Pass the prompt text to the function
     echo "Summary:"
     echo "$summary"
 else
     echo "Aggregate file is empty or does not exist."
 fi
-
-echo "Aggregation complete. Check $aggregate for the combined contents."
