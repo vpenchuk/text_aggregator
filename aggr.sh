@@ -37,6 +37,9 @@ fi
 # Load the profile configuration
 source "$profile_config_dir/$profile_config_file"
 
+# Load the OpenAI script
+source "$(dirname "$0")/openai.sh"
+
 # Load the prompt configuration
 prompt_text=$(cat "$prompt_config_dir/$prompt_config_file")
 
@@ -44,14 +47,22 @@ prompt_text=$(cat "$prompt_config_dir/$prompt_config_file")
 saves_dir="./saves"
 custom_dir="${saves_dir}/${custom_subfolder}"
 
+# File to store the list of found files
+
+
+# Empty the found files list file if it exists or create a new one
+> "$found_files_list"
+
 # Current timestamp for the saved file name
 timestamp=$(date +"%Y%m%d%H%M%S")
 
 # Decide whether to add timestamp based on the configuration
 if [ "$include_timestamp" = true ]; then
     aggregate="${custom_dir}/${aggr_file_name}_${timestamp}.txt"
+    found_files_list="${custom_dir}/files_list_${timestamp}.txt"
 else
     aggregate="${custom_dir}/${aggr_file_name}.txt"
+    found_files_list="${custom_dir}/files_list.txt"
 fi
 
 # Check and create custom subdirectory within saves if not exists
@@ -59,77 +70,6 @@ mkdir -p "$custom_dir"
 
 # Empty the aggregate file if it exists or create a new one
 > "$aggregate"
-
-# function to document / summarize the aggregated file
-summarize_with_openai() {
-    local file_content=$1
-    local prompt_text=$2
-    
-    # Your OpenAI API key should be read from an environment variable
-    local openai_api_key=$OPENAI_API_KEY
-    
-    # API endpoint for OpenAI Chat
-    local openai_endpoint="https://api.openai.com/v1/chat/completions"
-    
-    # Temporary file for the JSON payload
-    local json_payload=$(mktemp)
-    
-    # Temp File for jp slurping
-    echo "$file_content" > /tmp/file_content.tmp
-    
-    # Reformat / sanitize the prompt + context for JSON API call
-    jq -R -s '.' /tmp/file_content.tmp > /tmp/file_content_formatted.tmp
-    
-    #cat /tmp/file_content.tmp
-    
-    # Create the JSON payload
-    jq -n \
-    --arg prompt "$prompt_text" \
-    --slurpfile content /tmp/file_content_formatted.tmp \
-    '{model: "gpt-4-1106-preview", stream: false, messages: [{"role": "system", "content": $prompt}, {"role": "user", "content": ($content | add)}]}' > "$json_payload"
-    
-    #cat "$json_payload"
-    
-    # Make the API call and store the response
-    local summary_response=$(curl -s -X POST $openai_endpoint \
-        -H "Content-Type: application/json" \
-        -H "Authorization: Bearer $openai_api_key" \
-    --data-binary @"$json_payload")
-    
-    # Remove the temporary file
-    rm "$json_payload"
-    # Remove the temporary file
-    rm /tmp/file_content.tmp
-    
-    
-    # Extract the text from the response
-    local summary=$(echo "$summary_response" | jq -r '.choices[0].message.content')
-    
-    # Check for errors in the response
-    if [[ "$summary" == "" || "$summary" == "null" ]]; then
-        local error_message=$(echo "$summary_response" | jq -r '.error.message')
-        if [[ "$error_message" != "null" ]]; then
-            echo "Error from OpenAI: $error_message"
-            return 1
-        else
-            echo "No summary was provided or an unknown error occurred."
-            return 1
-        fi
-    fi
-    
-    echo "$summary"
-    
-    # Save summary to a file
-    local summary_filename
-    if [ "$include_timestamp" = true ]; then
-        summary_filename="$custom_dir/${summ_file_name}_${timestamp}.txt"
-    else
-        summary_filename="$custom_dir/${summ_file_name}.txt"
-    fi
-    
-    echo "$summary" > "$summary_filename"
-    echo "Summary saved to $summary_filename"
-}
 
 # Construct the find command as an array
 find_command=( find "$root_dir" -type f )
@@ -152,6 +92,7 @@ while IFS= read -r file; do
         win_path=$(echo $file | sed 's/\//\\/g' | sed 's/^./\0:/')
         # Write the file path/name to the aggregate file
         echo "//$win_path" >> "$aggregate"
+        echo "$win_path" >> "$found_files_list"
         # Append the file contents to the aggregate file
         cat "$file" >> "$aggregate"
         # Add separator lines between each file's content
@@ -164,11 +105,11 @@ done < <( "${find_command[@]}" )
 echo "Aggregation complete. Check $aggregate for the combined contents."
 
 # Call the summarize function with its contents
-if [ "summarization" = true ]; then
+if [ "$summarization" = true ]; then
     if [ -s "$aggregate" ]; then
         aggregate_content=$(<"$aggregate")
         echo "Calling OpenAI API for Summarization...Please wait..."
-        summary=$(summarize_with_openai "$aggregate_content" "$prompt_text")  # Pass the prompt text to the function
+        summary=$(summarize_with_prompt "$aggregate_content" "$prompt_text")  # Pass the prompt text to the function
         echo "Summary:"
         echo "$summary"
     else
