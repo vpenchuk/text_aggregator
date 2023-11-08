@@ -11,10 +11,10 @@ summarize_with_prompt() {
     
     # Temp File for jp slurping
     echo "$file_content" > /tmp/file_content.tmp
-
+    
     # Reformat / sanitize the prompt + context for JSON API call
     jq -R -s '.' /tmp/file_content.tmp > /tmp/file_content_formatted.tmp
-
+    
     # Create the JSON payload
     jq -n \
     --arg prompt "$prompt_text" \
@@ -28,7 +28,7 @@ summarize_with_prompt() {
     
     # clear the previous summary file
     > "$summary_filename"
-
+    
     curl -s -X POST "$openai_endpoint" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $openai_api_key" \
@@ -44,13 +44,18 @@ summarize_with_prompt() {
             # Extract "content" and "finish_reason" using jq, but ignore stderr output
             content=$(echo "$clean_line" | jq -r '.choices[0].delta.content // empty' 2>/dev/null)
             finish_reason=$(echo "$clean_line" | jq -r '.choices[0].finish_reason' 2>/dev/null)
-
+            
             # Check if content is non-empty before appending
             if [[ -n "$content" ]]; then
                 echo "$content"
-                echo "$content" >> "$summary_filename"
+                # Check if content is a newline, then append as new line, else append on same line
+                if [[ "$content" == $'\n' ]]; then
+                    echo "$content" >> "$summary_filename"
+                else
+                    echo -n "$content" >> "$summary_filename"
+                fi
             fi
-
+            
             # Check for a non-null finish_reason
             if [ "$finish_reason" != "null" ] && [ -n "$finish_reason" ]; then  # Ensure finish_reason is not null or empty
                 echo "Finish reason: $finish_reason" >&2
