@@ -47,22 +47,17 @@ prompt_text=$(cat "$prompt_config_dir/$prompt_config_file")
 saves_dir="./saves"
 custom_dir="${saves_dir}/${custom_subfolder}"
 
-# File to store the list of found files
-
-
-# Empty the found files list file if it exists or create a new one
-> "$found_files_list"
-
-# Current timestamp for the saved file name
+# Current timestamp for the directory or file name
 timestamp=$(date +"%Y%m%d%H%M%S")
 
-# Decide whether to add timestamp based on the configuration
-if [ "$include_timestamp" = true ]; then
-    aggregate="${custom_dir}/${aggr_file_name}_${timestamp}.txt"
-    found_files_list="${custom_dir}/files_list_${timestamp}.txt"
+# Decide whether to create a timestamp directory based on the configuration
+if [ "$timestamp_as_dir" = true ]; then
+    custom_dir="${custom_dir}/${timestamp}"
+    aggregate="${custom_dir}/${aggr_file_name}.txt"
+    found_files_list="${custom_dir}/${proj_files_list_name}.txt"
 else
     aggregate="${custom_dir}/${aggr_file_name}.txt"
-    found_files_list="${custom_dir}/files_list.txt"
+    found_files_list="${custom_dir}/${proj_files_list_name}.txt"
 fi
 
 # Check and create custom subdirectory within saves if not exists
@@ -70,6 +65,9 @@ mkdir -p "$custom_dir"
 
 # Empty the aggregate file if it exists or create a new one
 > "$aggregate"
+
+# Empty the found files list file if it exists or create a new one
+> "$found_files_list"
 
 # Construct the find command as an array
 find_command=( find "$root_dir" -type f )
