@@ -106,13 +106,13 @@ echo "Aggregation complete. Check $aggregate for the combined contents."
 if [ "$summarization" = true ]; then
     if [ -s "$aggregate" ]; then
         aggregate_content=$(<"$aggregate")
-        echo "Calling OpenAI API for Summarization...Please wait..."
-        summary=$(summarize_with_prompt "$aggregate_content" "$prompt_text")  # Pass the prompt text to the function
-        echo "Summary:"
-        echo "$summary"
+        echo "Calling OpenAI API for Summarization with $prompt_config_file - Please wait..."
+        summary_file="${custom_dir}/${summ_file_name}.txt"  # Define the proper summary filename
+        summary=$(summarize_with_prompt "$aggregate_content" "$prompt_text" "$summary_file")  # Pass the summary filename to the function
+        echo "Summary saved to $summary_file"
     else
         echo "Aggregate file is empty or does not exist."
     fi
 else
-    echo "Summarization OFF"
+    echo "Summarization OFF, No OpenAI Summary."
 fi
