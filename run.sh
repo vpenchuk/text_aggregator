@@ -19,12 +19,16 @@ second_arg=$2
 if [[ $OS = "Linux" ]]; then
     echo "Running linux.sh for $OS"
     # Pass the arguments to linux.sh
-    ./linux.sh "$first_arg" "$second_arg"
+    #bash linux.sh "$first_arg" "$second_arg"
+    bash aggr.sh "$first_arg" "$second_arg"
 elif [[ $OS = "Windows" ]]; then
     echo "Running windows.sh for $OS"
     # Pass the arguments to windows.sh
-    ./windows.sh "$first_arg" "$second_arg"
+    #sh windows.sh "$first_arg" "$second_arg"
+    sh aggr.sh "$first_arg" "$second_arg"
 else
     echo "Unsupported OS: $OS"
     exit 2
 fi
+
+

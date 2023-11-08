@@ -83,13 +83,23 @@ for exclusion in "${exclusions[@]}"; do
 done
 
 # Execute the find command using array expansion to preserve arguments
+OS=$(<.host)
+
 while IFS= read -r file; do
     # Check if the file exists
     if [ -f "$file" ]; then
-        linux_path=$file
-        # Write the file path/name to the aggregate file
-        echo "//$linux_path" >> "$aggregate"
-        echo "$linux_path" >> "$found_files_list"
+        if [ "$OS" == "Linux" ]; then
+            # For Linux, use the file path directly
+            echo "$file" >> "$aggregate"
+        elif [[ "$OS" == "Windows" ]]; then
+            # For Windows (Cygwin/MinGW/Windows Subsystem for Linux), convert to Windows path
+            win_path=$(echo $file | sed 's#/#\\#g' | sed 's#^.\{1\}#C:#')
+            echo "//${win_path}" >> "$aggregate"
+        else
+            echo "Unsupported OS: $OS"
+            exit 1
+        fi
+        
         # Append the file contents to the aggregate file
         cat "$file" >> "$aggregate"
         # Add separator lines between each file's content
