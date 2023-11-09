@@ -1,7 +1,7 @@
 #!/bin/bash
 
 summarize_with_prompt() {
-    local file_content=$1
+    local aggregate_content=$1
     local prompt_text=$2
     local summary_filename=$3
     local stream_mode=$4
@@ -12,14 +12,14 @@ summarize_with_prompt() {
     local json_payload
     json_payload=$(jq -n \
         --arg prompt "$prompt_text" \
-        --arg file_content "$file_content" \
+        --arg aggregate_content "$aggregate_content" \
         --argjson stream "$stream_mode" \
         '{
             model: "gpt-4-1106-preview",
             stream: $stream,
             messages: [
                 {"role": "system", "content": $prompt},
-                {"role": "user", "content": $file_content}
+                {"role": "user", "content": $aggregate_content}
             ]
         }')
 
@@ -39,33 +39,20 @@ summarize_with_prompt() {
 
         while IFS= read -r line; do
             # Remove "data: " prefix before processing the JSON
-            clean_line=$(echo "$line" | sed 's/^data: //')
+            clean_line="${line#data: }"
 
             # Extract "content" and "finish_reason" using jq, but ignore stderr output
             content=$(echo "$clean_line" | jq -r '.choices[0].delta.content // empty' 2>/dev/null)
             finish_reason=$(echo "$clean_line" | jq -r '.choices[0].finish_reason' 2>/dev/null)
 
-            # Check if content is non-empty before appending
+            # Output and append content if present
             if [[ -n "$content" ]]; then
-                # Output to console, handling new lines
-                if [[ "$content" == $'\n' ]]; then
-                    echo "$content" >&2
-                else
-                    echo -n "$content" >&2
-                fi
-                # Append to file, handling new lines
-                if [[ "$content" == $'\n' ]]; then
-                    echo "$content" >>"$summary_filename"
-                else
-                    echo -n "$content" >>"$summary_filename"
-                fi
+                echo -n "$content" | tee -a "$summary_filename" >&2
             fi
 
-            # Check for a non-null finish_reason
-            if [[ "$finish_reason" != "null" ]] && [[ -n "$finish_reason" ]]; then
-                echo >&2
-                echo >&2
-                echo "Finish reason: $finish_reason" >&2
+            # Check for a non-null finish_reason and break if present
+            if [[ "$finish_reason" != null && -n "$finish_reason" ]]; then
+                printf "\n\nFinish reason: $finish_reason\n" >&2
                 break
             fi
         done
@@ -73,10 +60,11 @@ summarize_with_prompt() {
 
     # Make API request and handle the response
     if [[ "$stream_mode" == "true" ]]; then
-        echo "API responses (streaming):" >&2
+        echo "API responses (streaming...):" >&2
         perform_curl | handle_stream_response
     else
         local summary_response
+        echo "API responses (please wait...):" >&2
         summary_response=$(perform_curl)
 
         local summary=$(jq -er '.choices[0].message.content // empty' <<<"$summary_response")

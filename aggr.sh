@@ -114,7 +114,8 @@ while IFS= read -r file; do
 done < <( "${find_command[@]}" )
 echo -e "===END OF CODE===" >> "$aggregate"
 
-echo "Aggregation complete: $aggregate"
+echo "Aggregation complete. Located: $aggregate"
+echo >&2
 
 # Call the summarize function with its contents
 if [ "$summarization" = true ]; then
