@@ -1,4 +1,5 @@
 #!/bin/bash
+echo >&2
 
 # Get the operating system type from .host file
 OS=$(<.host)
@@ -17,18 +18,24 @@ second_arg=$2
 
 # Depending on the OS, run the appropriate script and pass the arguments along
 if [[ $OS = "Linux" ]]; then
-    echo "Running linux.sh for $OS"
-    # Pass the arguments to linux.sh
-    #bash linux.sh "$first_arg" "$second_arg"
+    echo "Detected linux, using bash"
+    # use bash
     bash aggr.sh "$first_arg" "$second_arg"
+        #echo "Running linux.sh for $OS"
+        # Pass the arguments to linux.sh
+        #bash linux.sh "$first_arg" "$second_arg"
 elif [[ $OS = "Windows" ]]; then
-    echo "Running windows.sh for $OS"
-    # Pass the arguments to windows.sh
-    #sh windows.sh "$first_arg" "$second_arg"
+    echo "Detected windows, using sh"
+    # use sh
     sh aggr.sh "$first_arg" "$second_arg"
+        #echo "Running windows.sh for $OS"
+        # Pass the arguments to windows.sh
+        #sh windows.sh "$first_arg" "$second_arg"
 else
-    echo "Unsupported OS: $OS"
+    echo "Unsupported OS detected: $OS"
     exit 2
 fi
 
+echo "===END OF CONSOLE LOGS==="
+echo "Task: Update the code to resolve the issues in the console logs"
 

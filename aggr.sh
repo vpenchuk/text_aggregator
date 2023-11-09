@@ -1,4 +1,5 @@
 #!/bin/bash
+echo >&2
 
 # Load .env file
 if [ -f .env ]; then
@@ -85,16 +86,19 @@ done
 # Execute the find command using array expansion to preserve arguments
 OS=$(<.host)
 
+# Aggregate the files per the $find_command
 while IFS= read -r file; do
     # Check if the file exists
     if [ -f "$file" ]; then
         if [ "$OS" == "Linux" ]; then
             # For Linux, use the file path directly
             echo "$file" >> "$aggregate"
+            echo "$file" >> "$found_files_list"
         elif [[ "$OS" == "Windows" ]]; then
             # For Windows (Cygwin/MinGW/Windows Subsystem for Linux), convert to Windows path
             win_path=$(echo $file | sed 's#/#\\#g' | sed 's#^.\{1\}#C:#')
             echo "//${win_path}" >> "$aggregate"
+            echo "$win_path" >> "$found_files_list"
         else
             echo "Unsupported OS: $OS"
             exit 1
@@ -108,16 +112,18 @@ while IFS= read -r file; do
         echo "Error: $file not found."
     fi
 done < <( "${find_command[@]}" )
+echo -e "===END OF CODE===" >> "$aggregate"
 
-echo "Aggregation complete. Check $aggregate for the combined contents."
+echo "Aggregation complete: $aggregate"
 
 # Call the summarize function with its contents
 if [ "$summarization" = true ]; then
     if [ -s "$aggregate" ]; then
         aggregate_content=$(<"$aggregate")
-        echo "Calling OpenAI API for Summarization with $prompt_config_file - Please wait..."
+        #echo "Calling OpenAI API for Summarization with $prompt_config_file - Please wait, stream_mode: $stream_mode"
         summary_file="${custom_dir}/${summ_file_name}.txt"  # Define the proper summary filename
-        summary=$(summarize_with_prompt "$aggregate_content" "$prompt_text" "$summary_file")  # Pass the summary filename to the function
+        summary=$(summarize_with_prompt "$aggregate_content" "$prompt_text" "$summary_file" "$stream_mode")  # Pass the summary filename to the function
+        echo >&2
         echo "Summary saved to $summary_file"
     else
         echo "Aggregate file is empty or does not exist."
