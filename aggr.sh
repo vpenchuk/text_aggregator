@@ -6,10 +6,10 @@
 echo >&2
 
 # Import the OpenAI script functions
-source "$(dirname "$0")/openai.sh"
+source openai.sh
 
 # Import the config.sh script
-source "$(dirname "$0")/configs/app_config.sh" "$@"
+source configs/app_config.sh
 
 # Read the content of the prompt configuration file
 prompt_text=$(cat "$prompt_config_dir/$prompt_config_file")
@@ -19,6 +19,7 @@ saves_dir="./$saves_dir"
 
 # Define and create a custom subfolder (profile configuration)
 custom_dir="${saves_dir}/${custom_subfolder}"
+summaries_dir="${custom_dir}/summaries"
 
 # Generate a current timestamp for use in naming (profile configuration timestamp_as_dir)
 timestamp=$(date +"%Y%m%d%H%M%S")
@@ -26,18 +27,20 @@ timestamp=$(date +"%Y%m%d%H%M%S")
 # Choose whether to create a timestamp-named directory (profile timestamp_as_dir)
 if [ "$timestamp_as_dir" = true ]; then
     custom_dir="${custom_dir}/${timestamp}"
+    summaries_dir="${custom_dir}/summaries"
 fi
 
-# Define files. 1. aggregated text file 2. list of files configured
+# Ensure the custom and summary directories exists
+mkdir -p "$custom_dir"
+mkdir -p "${summaries_dir}" # Create the "summaries" directory
+
+# Define files: 1. aggregated text file 2. list of files configured
 aggregate="${custom_dir}/${aggr_file_name}.txt"
 found_files_list="${custom_dir}/${proj_files_list_name}.txt"
 
-# Ensure the custom directory exists
-mkdir -p "$custom_dir"
-
 # Initialize empty files for aggregate and list of found files
-> "$aggregate"
-> "$found_files_list"
+: > "$aggregate"
+: > "$found_files_list"
 
 # Construct the find command dynamically with inclusion and exclusion criteria
 find_command=( find "$root_dir" -type f )
