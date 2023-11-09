@@ -56,40 +56,55 @@ Run the aggregator by executing the `run.sh` script with optional profile and pr
 
 If profile or prompt configuration files are not provided, the default ones will be used.
 
-### Output
-
-The scripts will output:
-
-- **Aggregate file**: A text file containing the concatenated contents of all found files.
-- **Summary file**: If summarization is enabled, a summary of the aggregated content is provided.
-- **File Paths**: A list of all files/paths that were aggregated in the run.
-
-### Custom Configurations
+### Configuration Files
 
 Profile and prompt configurations can be created and placed inside the `configs/profiles` and `configs/prompts` directories respectively. Refer to the existing default configurations as a template.
+
+A Profile.sh specifies files, directories, rules, and options/
+
+A Prompt.txt specified the full text to be used for the OpenAI prompt that will be applied to the aggregated files according to the profile.
 
 #### Example profile configuration
 
 ```bash
+OS=$(<.host)
+saves_dir="saves"
 custom_subfolder="default_profile"
 aggr_file_name="aggregate"
 summ_file_name="summary"
-summarization=false
-proj_files_list_name="proj_files_paths"
-timestamp_as_dir=true
-root_dir="D:\Development\SideProjects\text_aggregator"
-extensions=("sh")
-exclusions=("saves")
+summarization=true
+stream_mode=true
+proj_files_list_name="filespaths"
+timestamp_as_dir=false
+root_dir="D:\...\...\my_project_root"
+extensions=("sh")  # Array of file extensions to include
+exclusions=(
+    #config files
+    "*\app_config.sh"
+    "*\default-profile.sh"
+
+    #saves
+    "*\saves"
+    ) 
 ```
 
-#### Example profile configuration
+#### Example prompt configuration
 
 ```txt
 In a single concise sentence, explain what the following code does:
 ```
 
-## Running the Scripts
+### Output
 
+The scripts will output:
+
+- **Aggregate txt file**: A text file containing the concatenated contents of all found files.
+- **Summary txt file**: If summarization is enabled, a summary of the aggregated content is provided.
+- **File Paths txt file**: A list of all files/paths that were aggregated in the run.
+
+## The Scripts
+
+- `app_config.sh`: validates files and directories before running.
 - `run.sh`: Wrapper script to run the aggregator based on the operating system specified in the `.host` file.
 - `openai.sh`: Contains the function to summarize content using OpenAI API.
 - `aggr.sh`: Handles aggregation of text files based on configurations and invokes the summarization.

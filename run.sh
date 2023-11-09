@@ -2,7 +2,7 @@
 echo >&2
 
 # Source the config.sh script
-source "$(dirname "$0")/configs/config.sh" "$@"
+source "$(dirname "$0")/configs/app_config.sh" "$@"
 
 # Here $1 and $2 represent the first and second arguments passed to run.sh
 first_arg=$1

@@ -4,8 +4,3 @@
 saves/*
 configs/profiles
 configs/prompts
-
-aggregate.txt
-
-summary_prompt.txt
-summary.txt

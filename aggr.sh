@@ -9,7 +9,7 @@ echo >&2
 source "$(dirname "$0")/openai.sh"
 
 # Import the config.sh script
-source "$(dirname "$0")/configs/config.sh" "$@"
+source "$(dirname "$0")/configs/app_config.sh" "$@"
 
 # Read the content of the prompt configuration file
 prompt_text=$(cat "$prompt_config_dir/$prompt_config_file")
