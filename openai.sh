@@ -71,7 +71,7 @@ summarize_with_prompt() {
         perform_curl | handle_stream_response
     else
         local summary_response
-        echo "API responses (please wait...):" >&2
+        echo "API responses (awaiting full response...):" >&2
         summary_response=$(perform_curl)
 
         local summary=$(jq -er '.choices[0].message.content // empty' <<<"$summary_response")

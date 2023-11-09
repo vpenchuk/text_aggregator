@@ -36,6 +36,7 @@ else
     exit 2
 fi
 
+# useful for easy copy+past with OpenAI code assistance
 echo "===END OF CONSOLE LOGS==="
 echo "Task: Update the code to resolve the issues in the console logs"
 

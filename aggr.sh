@@ -1,7 +1,11 @@
 #!/bin/bash
+# This bash script is designed to aggregate text from files based on configured profiles and prompts,
+# and then optionally pass the aggregated content to an OpenAI summarization tool.
+
+# Display a line break for cleaner output
 echo >&2
 
-# Load .env file
+# Load environment variables from a .env file, if it exists
 if [ -f .env ]; then
     export $(cat .env | xargs)
 else
@@ -9,93 +13,84 @@ else
     exit 1
 fi
 
-# New configuration directories under the 'configs' directory
+# Define directories for profile and prompt configuration files
 profile_config_dir="./configs/profiles"
 prompt_config_dir="./configs/prompts"
 
-# Default configuration file names
+# Define default configuration filenames
 default_profile_config="default-profile"
 default_prompt_config="default-prompt"
 
-# Use the first script argument as the profile config file name, or default if none is provided
+# Assign profile and prompt config filenames based on script arguments or defaults
 profile_config_file="${1:-$default_profile_config}.sh"
-
-# Use the second script argument as the prompt config file name, or default if none is provided
 prompt_config_file="${2:-$default_prompt_config}.txt"
 
-# Check if the profile configuration file exists, otherwise exit with error
+# Verify existence of profile configuration file and load it
 if [ ! -f "$profile_config_dir/$profile_config_file" ]; then
     echo "Profile configuration file not found: $profile_config_dir/$profile_config_file"
     exit 1
 fi
 
-# Check if the prompt configuration file exists, otherwise exit with error
+# Verify existence of prompt configuration file
 if [ ! -f "$prompt_config_dir/$prompt_config_file" ]; then
     echo "Prompt configuration file not found: $prompt_config_dir/$prompt_config_file"
     exit 1
 fi
 
-# Load the profile configuration
+# Import the profile configuration
 source "$profile_config_dir/$profile_config_file"
 
-# Load the OpenAI script
+# Import the OpenAI script functions
 source "$(dirname "$0")/openai.sh"
 
-# Load the prompt configuration
+# Read the content of the prompt configuration file
 prompt_text=$(cat "$prompt_config_dir/$prompt_config_file")
 
-# Saves directory and custom subfolder path
-saves_dir="./saves"
+# Define the save directory (profile configuration)
+saves_dir="./$saves_dir"
+
+# Define and create a custom subfolder (profile configuration)
 custom_dir="${saves_dir}/${custom_subfolder}"
 
-# Current timestamp for the directory or file name
+# Generate a current timestamp for use in naming (profile configuration timestamp_as_dir)
 timestamp=$(date +"%Y%m%d%H%M%S")
 
-# Decide whether to create a timestamp directory based on the configuration
+# Choose whether to create a timestamp-named directory (profile timestamp_as_dir)
 if [ "$timestamp_as_dir" = true ]; then
     custom_dir="${custom_dir}/${timestamp}"
-    aggregate="${custom_dir}/${aggr_file_name}.txt"
-    found_files_list="${custom_dir}/${proj_files_list_name}.txt"
-else
-    aggregate="${custom_dir}/${aggr_file_name}.txt"
-    found_files_list="${custom_dir}/${proj_files_list_name}.txt"
 fi
 
-# Check and create custom subdirectory within saves if not exists
+# Define files. 1. aggregated text file 2. list of files configured
+aggregate="${custom_dir}/${aggr_file_name}.txt"
+found_files_list="${custom_dir}/${proj_files_list_name}.txt"
+
+# Ensure the custom directory exists
 mkdir -p "$custom_dir"
 
-# Empty the aggregate file if it exists or create a new one
+# Initialize empty files for aggregate and list of found files
 > "$aggregate"
-
-# Empty the found files list file if it exists or create a new one
 > "$found_files_list"
 
-# Construct the find command as an array
+# Construct the find command dynamically with inclusion and exclusion criteria
 find_command=( find "$root_dir" -type f )
-
-# Add inclusion patterns for file extensions
 for ext in "${extensions[@]}"; do
     find_command+=( -iname "*.$ext" )
 done
-
-# Add exclusion patterns for directories and files
 for exclusion in "${exclusions[@]}"; do
-    find_command+=( ! -path "$exclusion" -prune )
+    find_command+=( ! -path "$exclusion" )
 done
 
-# Execute the find command using array expansion to preserve arguments
-OS=$(<.host)
+# Read and store the Operating System type from a file
+OS=$OS
 
-# Aggregate the files per the $find_command
+# Use the find command to locate files and prepare them for aggregation
 while IFS= read -r file; do
-    # Check if the file exists
     if [ -f "$file" ]; then
+        # Check the OS and format paths accordingly for output
         if [ "$OS" == "Linux" ]; then
-            # For Linux, use the file path directly
             echo "$file" >> "$aggregate"
             echo "$file" >> "$found_files_list"
-        elif [[ "$OS" == "Windows" ]]; then
-            # For Windows (Cygwin/MinGW/Windows Subsystem for Linux), convert to Windows path
+        elif [ "$OS" == "Windows" ]; then
             win_path=$(echo $file | sed 's#/#\\#g' | sed 's#^.\{1\}#C:#')
             echo "//${win_path}" >> "$aggregate"
             echo "$win_path" >> "$found_files_list"
@@ -103,27 +98,32 @@ while IFS= read -r file; do
             echo "Unsupported OS: $OS"
             exit 1
         fi
-        
-        # Append the file contents to the aggregate file
+        # Add the contents of the file and separators to the aggregate file
         cat "$file" >> "$aggregate"
-        # Add separator lines between each file's content
         echo -e "\n\n\n" >> "$aggregate"
     else
-        echo "Error: $file not found."
+        echo "Error: File not found - $file"
     fi
 done < <( "${find_command[@]}" )
+
+# Add a separator to indicate the end of aggregated code
 echo -e "===END OF CODE===" >> "$aggregate"
 
+# Notify the user if no files were found for aggregation
+if [ ! -s "$found_files_list" ]; then
+    echo "No files found for aggregation."
+fi
+
+# Indicate completion and location of the aggregated file
 echo "Aggregation complete. Located: $aggregate"
 echo >&2
 
-# Call the summarize function with its contents
+# If summarization is enabled, call the summarize function on the aggregated file
 if [ "$summarization" = true ]; then
     if [ -s "$aggregate" ]; then
         aggregate_content=$(<"$aggregate")
-        #echo "Calling OpenAI API for Summarization with $prompt_config_file - Please wait, stream_mode: $stream_mode"
-        summary_file="${custom_dir}/${summ_file_name}.txt"  # Define the proper summary filename
-        summary=$(summarize_with_prompt "$aggregate_content" "$prompt_text" "$summary_file" "$stream_mode")  # Pass the summary filename to the function
+        summary_file="${custom_dir}/${summ_file_name}.txt"
+        summary=$(summarize_with_prompt "$aggregate_content" "$prompt_text" "$summary_file" "$stream_mode")
         echo >&2
         echo "Summary saved to $summary_file"
     else
