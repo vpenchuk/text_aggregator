@@ -35,25 +35,31 @@ summarize_with_prompt() {
     }
 
     handle_stream_response() {
-        local line clean_line content finish_reason
+        local line clean_line json_content finish_reason content
 
         while IFS= read -r line; do
+            # Debugging line to see the raw input
+            echo "Raw read line: '$line'" >&2
+
+            # If the raw line is empty, continue to the next iteration (skip processing)
+            [[ -z "$line" ]] && continue
+
             # Remove "data: " prefix before processing the JSON
             clean_line="${line#data: }"
 
-            # Extract "content" and "finish_reason" using jq, but ignore stderr output
-            content=$(echo "$clean_line" | jq -r '.choices[0].delta.content // empty' 2>/dev/null)
-            finish_reason=$(echo "$clean_line" | jq -r '.choices[0].finish_reason' 2>/dev/null)
+            # Use jq without the -r flag so that newlines are preserved as \n literals in the string
+            json_content=$(echo "$clean_line" | jq '.choices[0].delta.content // ""' 2>/dev/null)
 
-            # Output and append content if present
-            if [[ -n "$content" ]]; then
-                echo -n "$content" | tee -a "$summary_filename" >&2
-            fi
+            # Debugging line to see the raw JSON output
+            echo "JSON content (including newlines): $json_content" >&2
 
-            # Check for a non-null finish_reason and break if present
-            if [[ "$finish_reason" != null && -n "$finish_reason" ]]; then
-                printf "\n\nFinish reason: $finish_reason\n" >&2
-                break
+            if [[ -z "$json_content" || "$json_content" == "\"\"" ]]; then
+                echo "Empty or non-existent content detected; skipping." >&2
+            else
+                # Removing the quotes around the string
+                # The echo command will interpret \n as actual newlines when printed
+                printf "%b" "${json_content//\"/}" >>"$summary_filename"
+                echo "Content with newlines (if any) processed and appended to file." >&2
             fi
         done
     }
