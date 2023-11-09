@@ -39,7 +39,7 @@ summarize_with_prompt() {
 
         while IFS= read -r line; do
             # Debugging line to see the raw input
-            echo "Raw read line: '$line'" >&2
+            #echo "Raw read line: '$line'" >&2
 
             # If the raw line is empty, continue to the next iteration (skip processing)
             [[ -z "$line" ]] && continue
@@ -51,15 +51,16 @@ summarize_with_prompt() {
             json_content=$(echo "$clean_line" | jq '.choices[0].delta.content // ""' 2>/dev/null)
 
             # Debugging line to see the raw JSON output
-            echo "JSON content (including newlines): $json_content" >&2
+            #echo "JSON content (including newlines): $json_content" >&2
 
             if [[ -z "$json_content" || "$json_content" == "\"\"" ]]; then
-                echo "Empty or non-existent content detected; skipping." >&2
+                #echo "Empty or non-existent content detected; skipping." >&2
+                echo >&2
             else
                 # Removing the quotes around the string
                 # The echo command will interpret \n as actual newlines when printed
-                printf "%b" "${json_content//\"/}" >>"$summary_filename"
-                echo "Content with newlines (if any) processed and appended to file." >&2
+                printf "%b" "${json_content//\"/}" >>"$summary_filename" >&2
+                # echo "Content with newlines (if any) processed and appended to file." >&2
             fi
         done
     }
