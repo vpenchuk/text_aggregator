@@ -68,7 +68,10 @@ summarize_with_prompt() {
 
         local summary=$(jq -er '.choices[0].message.content // empty' <<<"$summary_response")
         if [[ -n "$summary" ]]; then
+            # Write to the individual summary file and display in the console
             echo "$summary" | tee "$summary_filename" >&2
+            # Write to the main summary file
+            echo "$summary" >> "$summary_file"
         else
             echo "Error: No summary content received from OpenAI."
             return 1
