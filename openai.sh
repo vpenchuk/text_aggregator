@@ -72,8 +72,6 @@ summarize_with_prompt() {
             return 1
         fi
     fi
-
-    echo "Summary saved to $summary_filename"
 }
 
 export -f summarize_with_prompt # Export function if running in a subshell

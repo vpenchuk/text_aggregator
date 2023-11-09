@@ -58,7 +58,7 @@ if [ "${summary_mode}" == "individual" ]; then
     if [ "$summarization" = true ]; then
         echo '...Generating individual summaries...'
         echo
-        file_counter = 0
+        ((file_counter = 0))
         # Use the find command to locate files and generate summaries individually
         while IFS= read -r file; do
             ((file_counter++))
@@ -91,7 +91,8 @@ if [ "${summary_mode}" == "individual" ]; then
                 summarize_with_prompt "$file_contents" "$prompt_text" "$summary_filename" "$stream_mode"
 
                 # Output to indicate where the individual summary has been saved
-                echo "Summary for $base_filename saved to $summary_filename"
+                echo
+                echo "~Summary for $base_filename saved to $summary_filename"
                 echo
             else
                 echo "Error: File not found - $file"
@@ -154,7 +155,6 @@ elif [ "${summary_mode}" == "aggregate" ]; then
             summary_file="${custom_dir}/${summ_file_name}.txt"
             summary=$(summarize_with_prompt "$aggregate_content" "$prompt_text" "$summary_file" "$stream_mode")
             echo >&2
-            echo "Summary saved to $summary_file"
         else
             echo "Aggregate file is empty or does not exist."
         fi
