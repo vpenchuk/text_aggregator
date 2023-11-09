@@ -5,6 +5,7 @@ summarize_with_prompt() {
     local prompt_text=$2
     local summary_filename=$3
     local stream_mode=$4
+    local summary_file=$5
     local openai_api_key=$OPENAI_API_KEY
     local openai_endpoint="https://api.openai.com/v1/chat/completions"
 
@@ -35,7 +36,7 @@ summarize_with_prompt() {
     }
 
     handle_stream_response() {
-    local line clean_line json_content finish_reason content
+        local line clean_line json_content finish_reason content
 
         while IFS= read -r line; do
             # If the raw line is empty, continue to the next iteration (skip processing)
@@ -48,9 +49,10 @@ summarize_with_prompt() {
             json_content=$(echo "$clean_line" | jq -r '.choices[0].delta.content // empty' 2>/dev/null)
 
             if [[ -n "$json_content" ]]; then
-                # Remove the quotes around the string and handle newlines properly
-                # Using `tee -a` both to append to the file and to display it in the console
+                # Append to the individual summary file as content comes in without adding extra newlines
                 printf "%b" "${json_content}" | tee -a "$summary_filename" >&2
+                # Also append to the main summary file
+                printf "%b" "${json_content}" >>"$summary_file"
             fi
         done
     }
@@ -58,7 +60,7 @@ summarize_with_prompt() {
     # Make API request and handle the response
     if [[ "$stream_mode" == "true" ]]; then
         echo "(streaming...)" >&2
-        perform_curl | handle_stream_response
+        perform_curl | handle_stream_response "$summary_filename" "$summary_file"
     else
         local summary_response
         echo "API responses (awaiting full response...):" >&2

@@ -64,7 +64,7 @@ if [ "${summary_mode}" == "individual" ]; then
             echo "Error: File not found - $file"
         fi
     done < <("${find_command[@]}")
-    
+
     # Add a separator to indicate the end of aggregated code
     echo -e "===END OF CODE===" >>"$aggregate"
 
@@ -72,7 +72,11 @@ if [ "${summary_mode}" == "individual" ]; then
     if [ "$summarization" = true ]; then
         echo '...Generating individual summaries...'
 
+        summary_file="${custom_dir}/${summ_file_name}.txt"
+        : >$summary_file
+
         mkdir -p "${summaries_dir}"
+        
         ((file_counter = 0))
         while IFS= read -r file; do
             ((file_counter++))
@@ -86,7 +90,8 @@ if [ "${summary_mode}" == "individual" ]; then
                 file_contents=$(cat "$file")
 
                 # Call the summarize_with_prompt function for each file
-                summarize_with_prompt "$file_contents" "$prompt_text" "$summary_filename" "$stream_mode"
+                summary=$(summarize_with_prompt "$file_contents" "$prompt_text" "$summary_filename" "$stream_mode" "$summary_file")
+                echo "$summary" >>"$summary_file"
 
                 # Output to indicate where the individual summary has been saved
                 echo
@@ -148,10 +153,11 @@ elif [ "${summary_mode}" == "aggregate" ]; then
 
     # If summarization is enabled, call the summarize function on the aggregated file
     if [ "$summarization" = true ]; then
+        echo '...Generating individual summary file...'
         if [ -s "$aggregate" ]; then
             aggregate_content=$(<"$aggregate")
             summary_file="${custom_dir}/${summ_file_name}.txt"
-            summary=$(summarize_with_prompt "$aggregate_content" "$prompt_text" "$summary_file" "$stream_mode")
+            $(summarize_with_prompt "$aggregate_content" "$prompt_text" "$summary_filename" "$stream_mode" "$summary_file")
             echo >&2
         else
             echo "Aggregate file is empty or does not exist."
