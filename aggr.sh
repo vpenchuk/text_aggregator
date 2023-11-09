@@ -58,16 +58,27 @@ if [ "${summary_mode}" == "individual" ]; then
     # Use the find command to locate files and generate summaries individually
     while IFS= read -r file; do
         if [ -f "$file" ]; then
+            # Check the OS and format paths accordingly for output
+            if [ "$OS" == "Linux" ]; then
+                echo "$file" >>"$found_files_list"
+            elif [ "$OS" == "Windows" ]; then
+                win_path=$(echo $file | sed 's#/#\\#g' | sed 's#^.\{1\}#C:#')
+                echo "$win_path" >>"$found_files_list"
+            else
+                echo "Unsupported OS: $OS"
+                exit 1
+            fi
+
             # Generate a filename for the individual summary
             base_filename=$(basename -- "$file")
             summary_filename="${summaries_dir}/${base_filename}.summary"
-            
+
             # Read the content of the file
             aggregate_content=$(cat "$file")
-            
+
             # Call the summarize_with_prompt function for each file
             summarize_with_prompt "$aggregate_content" "$prompt_text" "$summary_filename" "$stream_mode"
-            
+
             # Output to indicate where the individual summary has been saved
             echo "Summary for $file saved to $summary_filename"
         else
