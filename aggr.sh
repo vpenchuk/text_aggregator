@@ -11,16 +11,6 @@ source openai.sh
 # Import the config.sh script
 source configs/app_config.sh
 
-# Read the content of the prompt configuration file
-prompt_text=$(cat "$prompt_config_dir/$prompt_config_file")
-
-# Define the save directory (profile configuration)
-saves_dir="./$saves_dir"
-
-# Define and create a custom subfolder (profile configuration)
-custom_dir="${saves_dir}/${custom_subfolder}"
-summaries_dir="${custom_dir}/summaries"
-
 # Generate a current timestamp for use in naming (profile configuration timestamp_as_dir)
 timestamp=$(date +"%Y%m%d%H%M%S")
 
@@ -30,9 +20,8 @@ if [ "$timestamp_as_dir" = true ]; then
     summaries_dir="${custom_dir}/summaries"
 fi
 
-# Ensure the custom and summary directories exists
+# Ensure the custom directories exists
 mkdir -p "$custom_dir"
-mkdir -p "${summaries_dir}" # Create the "summaries" directory
 
 # Define files: 1. aggregated text file 2. list of files configured
 aggregate="${custom_dir}/${aggr_file_name}.txt"
@@ -44,7 +33,6 @@ found_files_list="${custom_dir}/${proj_files_list_name}.txt"
 
 if [ "${summary_mode}" == "individual" ]; then
     echo 'You have selected "individual" mode...'
-    #rm $aggregate
 
     # Construct the find command dynamically with inclusion and exclusion criteria
     find_command=(find "$root_dir" -type f)
@@ -58,6 +46,10 @@ if [ "${summary_mode}" == "individual" ]; then
     if [ "$summarization" = true ]; then
         echo '...Generating individual summaries...'
         echo
+
+        # Ensure the custom directories exists
+        mkdir -p "${summaries_dir}"
+
         ((file_counter = 0))
         # Use the find command to locate files and generate summaries individually
         while IFS= read -r file; do

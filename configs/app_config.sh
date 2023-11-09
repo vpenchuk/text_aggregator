@@ -42,3 +42,13 @@ fi
 
 # Import the profile configuration
 source "$profile_config_dir/$profile_config_file"
+
+# Read the content of the prompt configuration file
+prompt_text=$(cat "$prompt_config_dir/$prompt_config_file")
+
+# Define the save directory (profile configuration)
+saves_dir="./$saves_dir"
+
+# Define and create a custom subfolder (profile configuration)
+custom_dir="${saves_dir}/${custom_subfolder}"
+summaries_dir="${custom_dir}/summaries"
