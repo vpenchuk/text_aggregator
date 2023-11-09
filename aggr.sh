@@ -6,7 +6,7 @@
 echo >&2
 
 # Import the OpenAI script functions
-source openai.sh
+source "./openai.sh"
 
 # Import the config.sh script
 source configs/app_config.sh

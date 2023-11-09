@@ -57,21 +57,43 @@ summarize_with_prompt() {
 
             # Remove "data: " prefix before processing the JSON
             clean_line="${line#data: }"
+            #echo "$clean_line" >&2
 
-            # Use jq to extract content properly with newlines preserved
+            # Use jq to extract stream's content
+            content=$(echo "$clean_line" | jq '.choices[0].delta.content // empty' 2>/dev/null)
+            # Use jq to extract content with
             json_content=$(echo "$clean_line" | jq -r '.choices[0].delta.content // empty' 2>/dev/null)
 
             if [[ -n "$json_content" ]]; then
+                # Remove quotation marks from $content
+                content_without_quotes=$(echo "$content" | tr -d '"')
+
                 # Always print json_content to the screen
-                printf "%b" "${json_content}" >&2
+                #echo >&2
+                #echo -n "$content" >&2
+                #echo -n "$content_without_quotes" >&2
+                echo -n "$json_content" >&2
+                #echo >&2
 
                 if [[ "$summary_mode" == "individual" ]]; then
                     # Append to the individual summary file if summary_mode is "individual"
-                    printf "%b" "${json_content}" >>"$summary_filename"
+                    printf "%s" "$json_content" >>"$summary_filename"
                 fi
 
                 # Always append json_content to the main summary file
-                printf "%b" "${json_content}" >>"$summary_file"
+                printf "%s" "$json_content" >>"$summary_file"
+
+                # Count the number of newline characters in the modified content
+                newline_count=$(awk 'BEGIN{RS="\\\\n"}END{print NR-1}' <<<"$content_without_quotes")
+                #echo " - Number of newline characters detected: $newline_count" >&2
+
+                # Print a new line for each newline character found
+                for ((i = 1; i <= newline_count; i++)); do
+                    #echo -n "($i)" >&2
+                    echo "" >> "$summary_filename"
+                    echo "" >> "$summary_file"
+                    echo >&2
+                done
             fi
         done
         printf "\n\n" >>"$summary_file"
@@ -90,17 +112,14 @@ summarize_with_prompt() {
         if [[ -n "$summary" ]]; then
 
             if [[ "$summary_mode" == "individual" ]]; then
-                # Write to the individual summary file and display in the console
-                echo "$summary" | tee "$summary_file" >&2
-            else
-                # Write to the individual summary files and display in the console
-                echo "$summary" | tee "$summary_filename" >&2
+                # Write to the individual's summary file and display in the console
+                echo "$summary" | tee "$summary_filename"
             fi
 
-            # Write to the main summary file
+            # Write to the main summary file & console.
             echo "$summary_filename: " >>"$summary_file"
             echo "$summary" >>"$summary_file"
-            echo "" >>"$summary_file"
+            echo "$summary" >&2
         else
             echo "Error: No summary content received from OpenAI."
             return 1
