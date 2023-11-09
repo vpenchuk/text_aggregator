@@ -4,9 +4,9 @@ This repository contains a set of shell scripts designed to aggregate text from 
 
 ## Overview
 
-The primary functionality is to:
-- Aggregate text files based on specific configurations (file extensions to be included, strings of paths (directories or files) to be excluded).
-- Provide a summary of the aggregated content by sending it to the OpenAI API.
+Primary functionality includes:
+- Aggregating text files based on specific configurations (file extensions, exclusion patterns).
+- Summarizing aggregated content using the OpenAI API with adjustable modes for individual or aggregate summaries.
 
 ## Prerequisites
 
@@ -58,7 +58,7 @@ If profile or prompt configuration files are not provided, the default ones will
 
 ### Configuration Files
 
-Profile and prompt configurations can be created and placed inside the `configs/profiles` and `configs/prompts` directories respectively. Refer to the existing default configurations as a template.
+Profiles and prompts are placed in `configs/profiles` and `configs/prompts`. Profile configurations specify which files to include or exclude, while prompt configurations contain the full prompt for the OpenAI query.
 
 A Profile.sh specifies files, directories, rules, and options/
 
@@ -97,16 +97,16 @@ In a single concise sentence, explain what the following code does:
 
 The scripts will output:
 
-- **Aggregate txt file**: A text file containing the concatenated contents of all found files.
-- **Summary txt file**: If summarization is enabled, a summary of the aggregated content is provided.
-- **File Paths txt file**: A list of all files/paths that were aggregated in the run.
+- An aggregated text file.
+- A summary file, if summarization is enabled.
+- A file listing all paths that were aggregated.
 
 ## The Scripts
 
-- `app_config.sh`: validates files and directories before running.
-- `run.sh`: Wrapper script to run the aggregator based on the operating system specified in the `.host` file.
-- `openai.sh`: Contains the function to summarize content using OpenAI API.
-- `aggr.sh`: Handles aggregation of text files based on configurations and invokes the summarization.
+- `app_config.sh`: Validates configurations before running the aggregator.
+- `run.sh`: Determines the OS and executes the aggregation script accordingly.
+- `openai.sh`: Contains the function for summarizing content using the OpenAI API.
+- `aggr.sh`: Manages text file aggregation and invokes summary if enabled.
 
 ## Contribution
 
