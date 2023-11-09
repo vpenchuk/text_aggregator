@@ -43,15 +43,34 @@ if [ "${summary_mode}" == "individual" ]; then
         find_command+=(! -path "$exclusion")
     done
 
+    # Loop through the found files and perform actions regardless of summarization value
+    while IFS= read -r file; do
+        if [ -f "$file" ]; then
+            # Check the OS and format paths accordingly for output
+            if [ "$OS" == "Linux" ]; then
+                echo "$file" >>"$found_files_list"
+            elif [ "$OS" == "Windows" ]; then
+                win_path=$(echo $file | sed 's#/#\\#g' | sed 's#^.\{1\}#C:#')
+                echo "$win_path" >>"$found_files_list"
+            else
+                echo "Unsupported OS: $OS"
+                exit 1
+            fi
+            # Add the filename and the contents of the file and separators to the aggregate file
+            echo "//$file" >>"$aggregate"
+            cat "$file" >>"$aggregate"
+            echo -e "\n\n\n" >>"$aggregate"
+        else
+            echo "Error: File not found - $file"
+        fi
+    done < <("${find_command[@]}")
+
+    # Separate the summarization process
     if [ "$summarization" = true ]; then
         echo '...Generating individual summaries...'
-        echo
 
-        # Ensure the custom directories exists
         mkdir -p "${summaries_dir}"
-
         ((file_counter = 0))
-        # Use the find command to locate files and generate summaries individually
         while IFS= read -r file; do
             ((file_counter++))
             echo "$file_counter"
@@ -62,23 +81,7 @@ if [ "${summary_mode}" == "individual" ]; then
 
                 # Read the content of the file
                 file_contents=$(cat "$file")
-
-                # Check the OS and format paths accordingly for output
-                if [ "$OS" == "Linux" ]; then
-                    echo "$file" >>"$found_files_list"
-                    echo "$file" >>"$aggregate"
-                elif [ "$OS" == "Windows" ]; then
-                    win_path=$(echo $file | sed 's#/#\\#g' | sed 's#^.\{1\}#C:#')
-                    echo "$win_path" >>"$found_files_list"
-                    echo "$file" >>"$aggregate" # This line was already correct
-                else
-                    echo "Unsupported OS: $OS"
-                    exit 1
-                fi
-                # Add the contents of the file and separators to the aggregate file
-                cat "$file" >>"$aggregate"
-                echo -e "\n\n\n" >>"$aggregate"
-
+                
                 # Call the summarize_with_prompt function for each file
                 summarize_with_prompt "$file_contents" "$prompt_text" "$summary_filename" "$stream_mode"
 
@@ -91,7 +94,7 @@ if [ "${summary_mode}" == "individual" ]; then
             fi
         done < <("${find_command[@]}")
     else
-        echo "Summarization OFF, No OpenAI Summary."
+        echo "Summarization OFF, aggregation of file contents complete."
     fi
 elif [ "${summary_mode}" == "aggregate" ]; then
     echo 'You have selected "aggregate"'
