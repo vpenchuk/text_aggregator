@@ -57,7 +57,7 @@ summarize_with_prompt() {
 
     # Make API request and handle the response
     if [[ "$stream_mode" == "true" ]]; then
-        echo "API responses (streaming...):" >&2
+        echo "(streaming...)" >&2
         perform_curl | handle_stream_response
     else
         local summary_response
