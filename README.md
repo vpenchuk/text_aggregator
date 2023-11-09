@@ -67,7 +67,6 @@ A Prompt.txt specified the full text to be used for the OpenAI prompt that will 
 #### Example profile configuration
 
 ```bash
-OS=$(<.host)
 saves_dir="saves"
 custom_subfolder="default_profile"
 aggr_file_name="aggregate"
