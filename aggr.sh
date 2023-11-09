@@ -22,7 +22,6 @@ fi
 
 # Ensure the custom directories exists
 mkdir -p "$custom_dir"
-mkdir -p "${summaries_dir}"
 
 # Define files: 1. aggregated text file 2. list of files configured
 aggregate="${custom_dir}/${aggr_file_name}.txt"
@@ -73,6 +72,8 @@ if [ "${summary_mode}" == "individual" ]; then
     if [ "$summarization" = true ]; then
         echo '...Generating individual summaries...'
 
+        mkdir -p "${summaries_dir}"
+
         summary_file="${custom_dir}/${summ_file_name}.txt"
         : >$summary_file
 
@@ -89,8 +90,8 @@ if [ "${summary_mode}" == "individual" ]; then
                 file_contents=$(cat "$file")
 
                 # Call the summarize_with_prompt function for each file
-                summary=$(summarize_with_prompt "$file_contents" "$prompt_text" "$summary_filename" "$stream_mode" "$summary_file")
-                echo "$summary" >>"$summary_file"
+                summary=$(summarize_with_prompt "$file_contents" "$prompt_text" "$summary_filename" "$stream_mode" "$summary_file" "$summary_mode")
+                #echo "$summary" >>"$summary_file"
 
                 # Output to indicate where the individual summary has been saved
                 echo
@@ -158,8 +159,8 @@ elif [ "${summary_mode}" == "aggregate" ]; then
             summary_file="${custom_dir}/${summ_file_name}.txt"
             : >$summary_file
             summary_file_basename=$(basename "$summary_file")
-            summary_filename="${summaries_dir}/${summary_file_basename}.summary"
-            summarize_with_prompt "$aggregate_content" "$prompt_text" "$summary_filename" "$stream_mode" "$summary_file"
+            summary_filename="${summaries_dir}/${summary_file_basename}"
+            summarize_with_prompt "$aggregate_content" "$prompt_text" "$summary_filename" "$stream_mode" "$summary_file" "$summary_mode"
             #echo >&2
         else
             echo "Aggregate file is empty or does not exist."

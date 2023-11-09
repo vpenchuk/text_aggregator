@@ -6,6 +6,7 @@ summarize_with_prompt() {
     local summary_filename=$3
     local stream_mode=$4
     local summary_file=$5
+    local summary_mode=$6
     local openai_api_key=$OPENAI_API_KEY
     local openai_endpoint="https://api.openai.com/v1/chat/completions"
 
@@ -61,13 +62,19 @@ summarize_with_prompt() {
             json_content=$(echo "$clean_line" | jq -r '.choices[0].delta.content // empty' 2>/dev/null)
 
             if [[ -n "$json_content" ]]; then
-                # Append to the individual summary file as content comes in without adding extra newlines
-                printf "%b" "${json_content}" | tee -a "$summary_filename" >&2
-                # Also append to the main summary file
+                # Always print json_content to the screen
+                printf "%b" "${json_content}" >&2
+
+                if [[ "$summary_mode" == "individual" ]]; then
+                    # Append to the individual summary file if summary_mode is "individual"
+                    printf "%b" "${json_content}" >>"$summary_filename"
+                fi
+
+                # Always append json_content to the main summary file
                 printf "%b" "${json_content}" >>"$summary_file"
             fi
         done
-        printf "\n" >>"$summary_file"
+        printf "\n\n" >>"$summary_file"
     }
 
     # Make API request and handle the response
@@ -81,8 +88,15 @@ summarize_with_prompt() {
 
         local summary=$(jq -er '.choices[0].message.content // empty' <<<"$summary_response")
         if [[ -n "$summary" ]]; then
-            # Write to the individual summary file and display in the console
-            echo "$summary" | tee "$summary_filename" >&2
+
+            if [[ "$summary_mode" == "individual" ]]; then
+                # Write to the individual summary file and display in the console
+                echo "$summary" | tee "$summary_file" >&2
+            else
+                # Write to the individual summary files and display in the console
+                echo "$summary" | tee "$summary_filename" >&2
+            fi
+
             # Write to the main summary file
             echo "$summary_filename: " >>"$summary_file"
             echo "$summary" >>"$summary_file"
