@@ -4,15 +4,6 @@ echo >&2
 # Source the config.sh script
 source "$(dirname "$0")/configs/config.sh" "$@"
 
-
-# Check if the .env file exists and load it
-if [ -f .env ]; then
-    export $(cat .env | xargs)
-else
-    echo ".env file not found"
-    exit 1
-fi
-
 # Here $1 and $2 represent the first and second arguments passed to run.sh
 first_arg=$1
 second_arg=$2

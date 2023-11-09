@@ -48,9 +48,6 @@ for exclusion in "${exclusions[@]}"; do
     find_command+=( ! -path "$exclusion" )
 done
 
-# Read and store the Operating System type from a file
-OS=$OS
-
 # Use the find command to locate files and prepare them for aggregation
 while IFS= read -r file; do
     if [ -f "$file" ]; then
@@ -79,7 +76,7 @@ echo -e "===END OF CODE===" >> "$aggregate"
 
 # Notify the user if no files were found for aggregation
 if [ ! -s "$found_files_list" ]; then
-    echo "No files found for aggregation."
+    echo "WARNING: No files found for aggregation."
 fi
 
 # Indicate completion and location of the aggregated file

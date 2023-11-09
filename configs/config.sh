@@ -8,6 +8,14 @@ else
     exit 1
 fi
 
+# Check if the .host file exists and load it
+if [ -f .host ]; then
+    OS=$(<.host)
+else
+    echo "Can't start: .host file not found"
+    exit 1
+fi
+
 # Define directories for profile and prompt configuration files
 profile_config_dir="./configs/profiles"
 prompt_config_dir="./configs/prompts"
@@ -34,6 +42,3 @@ fi
 
 # Import the profile configuration
 source "$profile_config_dir/$profile_config_file"
-
-# Read the Operating System type from a file
-OS=$OS
