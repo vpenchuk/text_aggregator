@@ -24,8 +24,18 @@ summarize_with_prompt() {
             ]
         }')
 
-    # Initialize or clear the summary file
-    : >"$summary_filename"
+    # Initialize or clear the summary file if not null
+    if [ -n "$summary_filename" ]; then
+        echo
+    else
+        : >"$summary_filename"
+    fi
+
+    if [ -n "$summary_file" ]; then
+        echo
+    else
+        : >"$summary_file"
+    fi
 
     # Function to perform the curl request
     perform_curl() {
@@ -38,6 +48,8 @@ summarize_with_prompt() {
     handle_stream_response() {
         local line clean_line json_content finish_reason content
 
+        printf "%b" "${summary_filename}:" >>"$summary_file"
+        printf "\n" >>"$summary_file"
         while IFS= read -r line; do
             # If the raw line is empty, continue to the next iteration (skip processing)
             [[ -z "$line" ]] && continue
@@ -55,6 +67,7 @@ summarize_with_prompt() {
                 printf "%b" "${json_content}" >>"$summary_file"
             fi
         done
+        printf "\n" >>"$summary_file"
     }
 
     # Make API request and handle the response
@@ -71,7 +84,9 @@ summarize_with_prompt() {
             # Write to the individual summary file and display in the console
             echo "$summary" | tee "$summary_filename" >&2
             # Write to the main summary file
-            echo "$summary" >> "$summary_file"
+            echo "$summary_filename: " >>"$summary_file"
+            echo "$summary" >>"$summary_file"
+            echo "" >>"$summary_file"
         else
             echo "Error: No summary content received from OpenAI."
             return 1

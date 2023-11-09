@@ -22,6 +22,7 @@ fi
 
 # Ensure the custom directories exists
 mkdir -p "$custom_dir"
+mkdir -p "${summaries_dir}"
 
 # Define files: 1. aggregated text file 2. list of files configured
 aggregate="${custom_dir}/${aggr_file_name}.txt"
@@ -75,8 +76,6 @@ if [ "${summary_mode}" == "individual" ]; then
         summary_file="${custom_dir}/${summ_file_name}.txt"
         : >$summary_file
 
-        mkdir -p "${summaries_dir}"
-        
         ((file_counter = 0))
         while IFS= read -r file; do
             ((file_counter++))
@@ -157,14 +156,17 @@ elif [ "${summary_mode}" == "aggregate" ]; then
         if [ -s "$aggregate" ]; then
             aggregate_content=$(<"$aggregate")
             summary_file="${custom_dir}/${summ_file_name}.txt"
-            $(summarize_with_prompt "$aggregate_content" "$prompt_text" "$summary_filename" "$stream_mode" "$summary_file")
-            echo >&2
+            : >$summary_file
+            summary_file_basename=$(basename "$summary_file")
+            summary_filename="${summaries_dir}/${summary_file_basename}.summary"
+            summarize_with_prompt "$aggregate_content" "$prompt_text" "$summary_filename" "$stream_mode" "$summary_file"
+            #echo >&2
         else
             echo "Aggregate file is empty or does not exist."
         fi
     else
         echo "Summarization OFF, No OpenAI Summary."
     fi
-elif [ "${summary_mode}" == "other" ]; then
-    echo "???"
+else
+    echo "??? summary_mode"
 fi
