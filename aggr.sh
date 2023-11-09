@@ -64,6 +64,9 @@ if [ "${summary_mode}" == "individual" ]; then
             echo "Error: File not found - $file"
         fi
     done < <("${find_command[@]}")
+    
+    # Add a separator to indicate the end of aggregated code
+    echo -e "===END OF CODE===" >>"$aggregate"
 
     # Separate the summarization process
     if [ "$summarization" = true ]; then
@@ -81,7 +84,7 @@ if [ "${summary_mode}" == "individual" ]; then
 
                 # Read the content of the file
                 file_contents=$(cat "$file")
-                
+
                 # Call the summarize_with_prompt function for each file
                 summarize_with_prompt "$file_contents" "$prompt_text" "$summary_filename" "$stream_mode"
 
