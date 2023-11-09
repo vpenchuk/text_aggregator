@@ -5,43 +5,11 @@
 # Display a line break for cleaner output
 echo >&2
 
-# Load environment variables from a .env file, if it exists
-if [ -f .env ]; then
-    export $(cat .env | xargs)
-else
-    echo ".env file not found"
-    exit 1
-fi
-
-# Define directories for profile and prompt configuration files
-profile_config_dir="./configs/profiles"
-prompt_config_dir="./configs/prompts"
-
-# Define default configuration filenames
-default_profile_config="default-profile"
-default_prompt_config="default-prompt"
-
-# Assign profile and prompt config filenames based on script arguments or defaults
-profile_config_file="${1:-$default_profile_config}.sh"
-prompt_config_file="${2:-$default_prompt_config}.txt"
-
-# Verify existence of profile configuration file and load it
-if [ ! -f "$profile_config_dir/$profile_config_file" ]; then
-    echo "Profile configuration file not found: $profile_config_dir/$profile_config_file"
-    exit 1
-fi
-
-# Verify existence of prompt configuration file
-if [ ! -f "$prompt_config_dir/$prompt_config_file" ]; then
-    echo "Prompt configuration file not found: $prompt_config_dir/$prompt_config_file"
-    exit 1
-fi
-
-# Import the profile configuration
-source "$profile_config_dir/$profile_config_file"
-
 # Import the OpenAI script functions
 source "$(dirname "$0")/openai.sh"
+
+# Import the config.sh script
+source "$(dirname "$0")/configs/config.sh" "$@"
 
 # Read the content of the prompt configuration file
 prompt_text=$(cat "$prompt_config_dir/$prompt_config_file")

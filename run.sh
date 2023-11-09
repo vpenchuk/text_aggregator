@@ -1,8 +1,9 @@
 #!/bin/bash
 echo >&2
 
-# Get the operating system type from .host file
-OS=$(<.host)
+# Source the config.sh script
+source "$(dirname "$0")/configs/config.sh" "$@"
+
 
 # Check if the .env file exists and load it
 if [ -f .env ]; then
@@ -21,16 +22,10 @@ if [[ $OS = "Linux" ]]; then
     echo "Detected linux, using bash"
     # use bash
     bash aggr.sh "$first_arg" "$second_arg"
-        #echo "Running linux.sh for $OS"
-        # Pass the arguments to linux.sh
-        #bash linux.sh "$first_arg" "$second_arg"
 elif [[ $OS = "Windows" ]]; then
     echo "Detected windows, using sh"
     # use sh
     sh aggr.sh "$first_arg" "$second_arg"
-        #echo "Running windows.sh for $OS"
-        # Pass the arguments to windows.sh
-        #sh windows.sh "$first_arg" "$second_arg"
 else
     echo "Unsupported OS detected: $OS"
     exit 2

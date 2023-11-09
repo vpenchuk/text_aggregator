@@ -2,7 +2,8 @@
 .host
 
 saves/*
-configs/*
+configs/profiles
+configs/prompts
 
 aggregate.txt
 
