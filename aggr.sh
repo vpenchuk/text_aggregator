@@ -5,173 +5,155 @@
 # Display a line break for cleaner output
 echo >&2
 
-# Import the OpenAI script functions
+# Source the OpenAI script functions and configurations
 source "./openai.sh"
-
-# Import the config.sh script
 source configs/app_config.sh
 
-# Generate a current timestamp for use in naming (profile configuration timestamp_as_dir)
-timestamp=$(date +"%Y%m%d%H%M%S")
+# Helper functions
+create_directory() {
+    mkdir -p "$1"
+}
 
-# Choose whether to create a timestamp-named directory (profile timestamp_as_dir)
-if [ "$timestamp_as_dir" = true ]; then
+initialize_file() {
+    : >"$1"
+}
+
+add_to_file() {
+    echo "$2" >>"$1"
+}
+
+format_windows_path() {
+    local file="$1"
+    echo "$file" | sed 's#/#\\#g' | sed 's#^.\{1\}#C:#'
+}
+
+check_os_and_format_path() {
+    local file="$1"
+    if [[ "$OS" == "Linux" ]]; then
+        echo "$file"
+    elif [[ "$OS" == "Windows" ]]; then
+        format_windows_path "$file"
+    else
+        echo "Unsupported OS: $OS"
+        exit 1
+    fi
+}
+
+# Create the find command to locate files
+find_command=(find "$root_dir" -type f)
+for ext in "${extensions[@]}"; do
+    find_command+=(-iname "*.$ext")
+done
+for exclusion in "${exclusions[@]}"; do
+    find_command+=(! -path "$exclusion")
+done
+
+# Generate a current timestamp for use in naming
+timestamp=$(date +"%Y%m%d%H%M%S")
+custom_dir="${saves_dir}/${custom_subfolder}"
+summaries_dir="${custom_dir}/summaries"
+if [[ "$timestamp_as_dir" == true ]]; then
     custom_dir="${custom_dir}/${timestamp}"
     summaries_dir="${custom_dir}/summaries"
 fi
 
-# Ensure the custom directories exists
-mkdir -p "$custom_dir"
+create_directory "$custom_dir"
 
-# Define files: 1. aggregated text file 2. list of files configured
+# Define aggregated text file and list of files configured
 aggregate="${custom_dir}/${aggr_file_name}.txt"
 found_files_list="${custom_dir}/${proj_files_list_name}.txt"
 
-# Initialize empty files for aggregate and list of found files
-: >"$aggregate"
-: >"$found_files_list"
+initialize_file "$aggregate"
+initialize_file "$found_files_list"
 
-if [ "${summary_mode}" == "individual" ]; then
+# Loop through the files based on the find command
+((total_files = 0))
+while IFS= read -r file; do
+    ((total_files++))
+    if [[ -f "$file" ]]; then
+        formatted_path=$(check_os_and_format_path "$file")
+        add_to_file "$found_files_list" "$formatted_path"
+        add_to_file "$aggregate" "$formatted_path"
+        cat "$file" >> "$aggregate"
+        echo -e "\n" >>"$aggregate"
+    else
+        echo "Error: File not found - $file"
+    fi
+done < <("${find_command[@]}")
+
+# Add a separator to indicate the end of aggregated code
+add_to_file "$aggregate" "===END OF CODE==="
+
+# Handle individual summarization mode
+process_individual_mode() {
     echo 'You have selected "individual" mode...'
-
-    # Construct the find command dynamically with inclusion and exclusion criteria
-    find_command=(find "$root_dir" -type f)
-    for ext in "${extensions[@]}"; do
-        find_command+=(-iname "*.$ext")
-    done
-    for exclusion in "${exclusions[@]}"; do
-        find_command+=(! -path "$exclusion")
-    done
-
-    ((total_files = 0))
-
-    # Loop through the found files and perform actions regardless of summarization value
-    while IFS= read -r file; do
-        ((total_files++))
-        if [ -f "$file" ]; then
-            # Check the OS and format paths accordingly for output
-            if [ "$OS" == "Linux" ]; then
-                echo "$file" >>"$found_files_list"
-            elif [ "$OS" == "Windows" ]; then
-                win_path=$(echo $file | sed 's#/#\\#g' | sed 's#^.\{1\}#C:#')
-                echo "$win_path" >>"$found_files_list"
-            else
-                echo "Unsupported OS: $OS"
-                exit 1
-            fi
-            # Add the filename and the contents of the file and separators to the aggregate file
-            echo "//$file" >>"$aggregate"
-            cat "$file" >>"$aggregate"
-            echo -e "\n\n\n" >>"$aggregate"
-        else
-            echo "Error: File not found - $file"
-        fi
-    done < <("${find_command[@]}")
-
-    # Add a separator to indicate the end of aggregated code
-    echo -e "===END OF CODE===" >>"$aggregate"
-
-    # Separate the summarization process
-    if [ "$summarization" = true ]; then
-        echo '...Generating individual summaries...'
-        echo >&2
-
-        mkdir -p "${summaries_dir}"
+    echo >&2
+    if [[ "$summarization" == true ]]; then
+        create_directory "${summaries_dir}"
 
         summary_file="${custom_dir}/${summ_file_name}.txt"
-        : >$summary_file
+        initialize_file "$summary_file"
 
-        ((file_counter = 0))
+        file_counter=0
         while IFS= read -r file; do
             ((file_counter++))
-            echo -n "~$file_counter of $total_files"
-            if [ -f "$file" ]; then
-                # Generate a filename for the individual summary
+            if [[ -f "$file" ]]; then
                 base_filename=$(basename -- "$file")
                 summary_filename="${summaries_dir}/${base_filename}.summary"
+                file_contents=$(<"$file")
+                echo -n "$file_counter of $total_files"
+                summarize_with_prompt "$file_contents" "$prompt_text" "$summary_filename" "$stream_mode" "$summary_file" "$summary_mode"
 
-                # Read the content of the file
-                file_contents=$(cat "$file")
-
-                # Call the summarize_with_prompt function for each file
-                summary=$(summarize_with_prompt "$file_contents" "$prompt_text" "$summary_filename" "$stream_mode" "$summary_file" "$summary_mode")
-                #echo "$summary" >>"$summary_file"
-
-                # Output to indicate where the individual summary has been saved
                 echo
                 echo "~Summary for $base_filename saved to $summary_filename"
                 echo
+
             else
                 echo "Error: File not found - $file"
             fi
         done < <("${find_command[@]}")
     else
-        echo "Summarization OFF, aggregation of file contents complete."
+        echo "Summarization is OFF"
+        echo
+        break
     fi
-elif [ "${summary_mode}" == "aggregate" ]; then
+}
+
+# Handle aggregate summarization mode
+process_aggregate_mode() {
     echo 'You have selected "aggregate"'
-
-    # Construct the find command dynamically with inclusion and exclusion criteria
-    find_command=(find "$root_dir" -type f)
-    for ext in "${extensions[@]}"; do
-        find_command+=(-iname "*.$ext")
-    done
-    for exclusion in "${exclusions[@]}"; do
-        find_command+=(! -path "$exclusion")
-    done
-
-    # Use the find command to locate files and prepare them for aggregation
-    while IFS= read -r file; do
-        if [ -f "$file" ]; then
-            # Check the OS and format paths accordingly for output
-            if [ "$OS" == "Linux" ]; then
-                echo "$file" >>"$aggregate"
-                echo "$file" >>"$found_files_list"
-            elif [ "$OS" == "Windows" ]; then
-                win_path=$(echo $file | sed 's#/#\\#g' | sed 's#^.\{1\}#C:#')
-                echo "//${win_path}" >>"$aggregate"
-                echo "$win_path" >>"$found_files_list"
-            else
-                echo "Unsupported OS: $OS"
-                exit 1
-            fi
-            # Add the contents of the file and separators to the aggregate file
-            cat "$file" >>"$aggregate"
-            echo -e "\n\n\n" >>"$aggregate"
-        else
-            echo "Error: File not found - $file"
-        fi
-    done < <("${find_command[@]}")
-
-    # Add a separator to indicate the end of aggregated code
-    echo -e "===END OF CODE===" >>"$aggregate"
-
-    # Notify the user if no files were found for aggregation
-    if [ ! -s "$found_files_list" ]; then
+    if [[ ! -s "$found_files_list" ]]; then
         echo "WARNING: No files found for aggregation."
     fi
 
-    # Indicate completion and location of the aggregated file
     echo "Aggregation complete. Located: $aggregate"
     echo >&2
 
-    # If summarization is enabled, call the summarize function on the aggregated file
-    if [ "$summarization" = true ]; then
-        echo '...Generating individual summary file...'
-        if [ -s "$aggregate" ]; then
-            aggregate_content=$(<"$aggregate")
-            summary_file="${custom_dir}/${summ_file_name}.txt"
-            : >$summary_file
-            summary_file_basename=$(basename "$summary_file")
-            summary_filename="${summaries_dir}/${summary_file_basename}"
-            summarize_with_prompt "$aggregate_content" "$prompt_text" "$summary_filename" "$stream_mode" "$summary_file" "$summary_mode"
-            #echo >&2
-        else
-            echo "Aggregate file is empty or does not exist."
-        fi
+    if [[ "$summarization" == true && -s "$aggregate" ]]; then
+        echo '...Generating summary file...'
+        #create_directory "${summaries_dir}"
+
+        aggregate_content=$(<"$aggregate")
+        summary_file="${custom_dir}/${summ_file_name}.txt"
+        initialize_file "$summary_file"
+
+        summary_filename="${summaries_dir}/$(basename "$summary_file")"
+        #summary_filename_file="${summary_filename}.txt"
+        #initialize_file "$summary_filename"
+
+        summarize_with_prompt "$aggregate_content" "$prompt_text" "$summary_filename" "$stream_mode" "$summary_file" "$summary_mode"
+        echo >&2
     else
-        echo "Summarization OFF, No OpenAI Summary."
+        echo "Summarization is OFF or Aggregate file is empty."
     fi
+}
+
+# Process summarization based on mode
+if [[ "$summary_mode" == "individual" ]]; then
+    process_individual_mode
+elif [[ "$summary_mode" == "aggregate" ]]; then
+    process_aggregate_mode
 else
-    echo "??? summary_mode"
+    echo "Unknown summary_mode: $summary_mode"
+    exit 1
 fi

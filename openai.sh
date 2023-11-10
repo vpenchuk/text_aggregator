@@ -25,19 +25,6 @@ summarize_with_prompt() {
             ]
         }')
 
-    # Initialize or clear the summary file if not null
-    if [ -n "$summary_filename" ]; then
-        echo
-    else
-        : >"$summary_filename"
-    fi
-
-    if [ -n "$summary_file" ]; then
-        echo
-    else
-        : >"$summary_file"
-    fi
-
     # Function to perform the curl request
     perform_curl() {
         curl -s -X POST "$openai_endpoint" \
@@ -61,7 +48,7 @@ summarize_with_prompt() {
 
             # Use jq to extract stream's content
             content=$(echo "$clean_line" | jq '.choices[0].delta.content // empty' 2>/dev/null)
-            # Use jq to extract content with
+            # Use jq to extract content with -r
             json_content=$(echo "$clean_line" | jq -r '.choices[0].delta.content // empty' 2>/dev/null)
 
             if [[ -n "$json_content" ]]; then
@@ -75,28 +62,30 @@ summarize_with_prompt() {
                 echo -n "$json_content" >&2
                 #echo >&2
 
+                # Count the number of newline characters in the modified content
+                newline_count=$(awk 'BEGIN{RS="\\\\n"}END{print NR-1}' <<<"$content_without_quotes")
+                #echo " - Number of newline characters detected: $newline_count" >&2
+
                 if [[ "$summary_mode" == "individual" ]]; then
                     # Append to the individual summary file if summary_mode is "individual"
                     printf "%s" "$json_content" >>"$summary_filename"
+                    # Print a new line for each newline character found
+                    for ((i = 1; i <= newline_count; i++)); do
+                        echo "" >>"$summary_filename"
+                    done
                 fi
 
                 # Always append json_content to the main summary file
                 printf "%s" "$json_content" >>"$summary_file"
 
-                # Count the number of newline characters in the modified content
-                newline_count=$(awk 'BEGIN{RS="\\\\n"}END{print NR-1}' <<<"$content_without_quotes")
-                #echo " - Number of newline characters detected: $newline_count" >&2
-
                 # Print a new line for each newline character found
                 for ((i = 1; i <= newline_count; i++)); do
-                    #echo -n "($i)" >&2
-                    echo "" >> "$summary_filename"
-                    echo "" >> "$summary_file"
+                    echo "" >>"$summary_file"
                     echo >&2
                 done
             fi
         done
-        printf "\n\n" >>"$summary_file"
+        printf "\n\n\n\n" >>"$summary_file"
     }
 
     # Make API request and handle the response
@@ -113,13 +102,15 @@ summarize_with_prompt() {
 
             if [[ "$summary_mode" == "individual" ]]; then
                 # Write to the individual's summary file and display in the console
-                echo "$summary" | tee "$summary_filename"
+                echo -n "$summary" | tee "$summary_filename"
+            else
+                echo -n "$summary" >&2
             fi
 
             # Write to the main summary file & console.
             echo "$summary_filename: " >>"$summary_file"
             echo "$summary" >>"$summary_file"
-            echo -n "$summary" >&2
+            echo -e "\n\n\n" >>"$summary_file"
         else
             echo "Error: No summary content received from OpenAI."
             return 1
