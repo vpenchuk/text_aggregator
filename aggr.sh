@@ -43,8 +43,11 @@ if [ "${summary_mode}" == "individual" ]; then
         find_command+=(! -path "$exclusion")
     done
 
+    ((total_files = 0))
+
     # Loop through the found files and perform actions regardless of summarization value
     while IFS= read -r file; do
+        ((total_files++))
         if [ -f "$file" ]; then
             # Check the OS and format paths accordingly for output
             if [ "$OS" == "Linux" ]; then
@@ -71,6 +74,7 @@ if [ "${summary_mode}" == "individual" ]; then
     # Separate the summarization process
     if [ "$summarization" = true ]; then
         echo '...Generating individual summaries...'
+        echo >&2
 
         mkdir -p "${summaries_dir}"
 
@@ -80,7 +84,7 @@ if [ "${summary_mode}" == "individual" ]; then
         ((file_counter = 0))
         while IFS= read -r file; do
             ((file_counter++))
-            echo "$file_counter"
+            echo -n "~$file_counter of $total_files"
             if [ -f "$file" ]; then
                 # Generate a filename for the individual summary
                 base_filename=$(basename -- "$file")

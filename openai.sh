@@ -101,11 +101,11 @@ summarize_with_prompt() {
 
     # Make API request and handle the response
     if [[ "$stream_mode" == "true" ]]; then
-        echo "(streaming...)" >&2
+        echo " (streaming...)" >&2
         perform_curl | handle_stream_response "$summary_filename" "$summary_file"
     else
         local summary_response
-        echo "API responses (awaiting full response...):" >&2
+        echo "(awaiting full response...)" >&2
         summary_response=$(perform_curl)
 
         local summary=$(jq -er '.choices[0].message.content // empty' <<<"$summary_response")
@@ -119,7 +119,7 @@ summarize_with_prompt() {
             # Write to the main summary file & console.
             echo "$summary_filename: " >>"$summary_file"
             echo "$summary" >>"$summary_file"
-            echo "$summary" >&2
+            echo -n "$summary" >&2
         else
             echo "Error: No summary content received from OpenAI."
             return 1
