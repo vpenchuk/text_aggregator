@@ -40,12 +40,22 @@ check_os_and_format_path() {
 }
 
 # Create the find command to locate files
-find_command=(find "$root_dir" -type f)
-for ext in "${extensions[@]}"; do
-    find_command+=(-iname "*.$ext")
-done
+find_command="find $root_dir -type f"
+ext_count=${#extensions[@]}
+
+if [ "$ext_count" -gt 0 ]; then
+    find_command+=" \\( "
+    for ((i=0; i<ext_count; i++)); do
+        find_command+="-iname \"*.${extensions[i]}\""
+        if [ $((i + 1)) -lt "$ext_count" ]; then
+            find_command+=" -o "
+        fi
+    done
+    find_command+=" \\) "
+fi
+
 for exclusion in "${exclusions[@]}"; do
-    find_command+=(! -path "$exclusion")
+    find_command+=" ! -path \"$exclusion\""
 done
 
 # Generate a current timestamp for use in naming
@@ -79,7 +89,8 @@ while IFS= read -r file; do
     else
         echo "Error: File not found - $file"
     fi
-done < <("${find_command[@]}")
+#done < <("${find_command[@]}")
+done < <(eval "$find_command")
 
 # Add a separator to indicate the end of aggregated code
 add_to_file "$aggregate" "===END OF CODE==="
@@ -115,7 +126,6 @@ process_individual_mode() {
     else
         echo "Summarization is OFF"
         echo
-        break
     fi
 }
 
