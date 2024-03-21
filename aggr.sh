@@ -158,6 +158,22 @@ process_aggregate_mode() {
     fi
 }
 
+list_file_extensions() {
+    local root_dir=$1
+
+    # Start constructing the find command
+    local find_command="find \"$root_dir\" -type f"
+
+    # Add exclusions for both directories and files to the find command
+    for exclusion in "${exclusions[@]}"; do
+        find_command+=" ! -path \"$exclusion\""
+    done
+
+    # Execute the find command, then process the output to list unique extensions
+    eval $find_command | awk -F. '/\./ {print $NF}' | sort -u
+}
+
+
 # Process summarization based on mode
 if [[ "$summary_mode" == "individual" ]]; then
     process_individual_mode
